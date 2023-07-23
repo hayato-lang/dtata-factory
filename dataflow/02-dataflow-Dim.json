@@ -1,0 +1,314 @@
+{
+	"name": "02-dataflow-Dim",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "CustomerCSV",
+						"type": "DatasetReference"
+					},
+					"name": "Customer"
+				},
+				{
+					"dataset": {
+						"referenceName": "Product_Table",
+						"type": "DatasetReference"
+					},
+					"name": "Product"
+				},
+				{
+					"dataset": {
+						"referenceName": "ProductModel_Table",
+						"type": "DatasetReference"
+					},
+					"name": "ProductModel"
+				},
+				{
+					"dataset": {
+						"referenceName": "ProductCategory_Table",
+						"type": "DatasetReference"
+					},
+					"name": "ProductCategory"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimCustomer_Table",
+						"type": "DatasetReference"
+					},
+					"name": "GetMaxCustomer"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimProduct_Table",
+						"type": "DatasetReference"
+					},
+					"name": "DimProductLatest"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DimCustomer_Table",
+						"type": "DatasetReference"
+					},
+					"name": "DimCustomer"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimProduct_Table",
+						"type": "DatasetReference"
+					},
+					"name": "DimProduct"
+				},
+				{
+					"name": "CustomerSKSink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "ProductjoinProductModel"
+				},
+				{
+					"name": "joinProductCategory"
+				},
+				{
+					"name": "selectColumns"
+				},
+				{
+					"name": "ProductSK"
+				},
+				{
+					"name": "selectColumn"
+				},
+				{
+					"name": "customerSK"
+				},
+				{
+					"name": "CustomerSKUpdate"
+				},
+				{
+					"name": "DoesProductexists"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          CustomerID as string,",
+				"          NameStyle as string,",
+				"          Title as string,",
+				"          FirstName as string,",
+				"          MiddleName as string,",
+				"          LastName as string,",
+				"          Suffix as string,",
+				"          CompanyName as string,",
+				"          SalesPerson as string,",
+				"          EmailAddress as string,",
+				"          Phone as string,",
+				"          PasswordHash as string,",
+				"          PasswordSalt as string,",
+				"          rowguid as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> Customer",
+				"source(output(",
+				"          ProductID as integer,",
+				"          Name as string,",
+				"          ProductNumber as string,",
+				"          Color as string,",
+				"          StandardCost as decimal(19,4),",
+				"          ListPrice as decimal(19,4),",
+				"          Size as string,",
+				"          Weight as decimal(8,2),",
+				"          ProductCategoryID as integer,",
+				"          ProductModelID as integer,",
+				"          SellStartDate as timestamp,",
+				"          SellEndDate as timestamp,",
+				"          DiscontinuedDate as timestamp,",
+				"          ThumbNailPhoto as binary,",
+				"          ThumbnailPhotoFileName as string,",
+				"          rowguid as string,",
+				"          ModifiedDate as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> Product",
+				"source(output(",
+				"          ProductModelID as integer,",
+				"          Name as string,",
+				"          CatalogDescription as string,",
+				"          rowguid as string,",
+				"          ModifiedDate as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> ProductModel",
+				"source(output(",
+				"          ProductCategoryID as integer,",
+				"          ParentProductCategoryID as integer,",
+				"          Name as string,",
+				"          rowguid as string,",
+				"          ModifiedDate as timestamp",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> ProductCategory",
+				"source(output(",
+				"          CustomerSK as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     query: 'SELECT MAX([CustomerSK]) as CustomerSK FROM [dbo].[DimCustomer]\\n',",
+				"     format: 'query',",
+				"     staged: true) ~> GetMaxCustomer",
+				"source(output(",
+				"          ProductSK as integer,",
+				"          ProductID as integer,",
+				"          ProductModelID as integer,",
+				"          ProductcategoryID as integer,",
+				"          ProductName as string,",
+				"          ProductModelName as string,",
+				"          ProductCategoryName as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table',",
+				"     staged: true) ~> DimProductLatest",
+				"DoesProductexists, ProductModel join(Product@ProductModelID == ProductModel@ProductModelID,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> ProductjoinProductModel",
+				"ProductjoinProductModel, ProductCategory join(Product@ProductCategoryID == ProductCategory@ProductCategoryID,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinProductCategory",
+				"joinProductCategory select(mapColumn(",
+				"          ProductID,",
+				"          ProductName = Product@Name,",
+				"          ProductNumber,",
+				"          ListPrice,",
+				"          Size,",
+				"          Weight,",
+				"          ProductCategoryID = Product@ProductCategoryID,",
+				"          ProductModelID = Product@ProductModelID,",
+				"          SellStartDate,",
+				"          SellEndDate,",
+				"          DiscontinuedDate,",
+				"          ThumbNailPhoto,",
+				"          ThumbnailPhotoFileName,",
+				"          rowguid = Product@rowguid,",
+				"          ModifiedDate = Product@ModifiedDate,",
+				"          ProductModelID = ProductModel@ProductModelID,",
+				"          ProductModelName = ProductModel@Name,",
+				"          CatalogDescription,",
+				"          rowguid = ProductModel@rowguid,",
+				"          ModifiedDate = ProductModel@ModifiedDate,",
+				"          ProductCategoryID = ProductCategory@ProductCategoryID,",
+				"          ParentProductCategoryID,",
+				"          ProductCategoryName = ProductCategory@Name,",
+				"          rowguid = ProductCategory@rowguid,",
+				"          ModifiedDate = ProductCategory@ModifiedDate",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectColumns",
+				"selectColumns keyGenerate(output(ProductSK as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> ProductSK",
+				"Customer select(mapColumn(",
+				"          CustomerID,",
+				"          NameStyle,",
+				"          Title,",
+				"          FirstName,",
+				"          MiddleName,",
+				"          LastName,",
+				"          Suffix,",
+				"          CompanyName,",
+				"          SalesPerson,",
+				"          EmailAddress,",
+				"          Phone,",
+				"          PasswordHash,",
+				"          PasswordSalt,",
+				"          rowguid",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectColumn",
+				"selectColumn keyGenerate(output(CustomerSK as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> customerSK",
+				"customerSK derive(CustomerSK = CustomerSK + CustomerSKSink#outputs()[1].CustomerSK) ~> CustomerSKUpdate",
+				"Product, DimProductLatest exists(Product@ProductID == DimProductLatest@ProductID,",
+				"     negate:true,",
+				"     broadcast: 'auto')~> DoesProductexists",
+				"CustomerSKUpdate sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          CustomerSK as integer,",
+				"          CustomerID as integer,",
+				"          CompanyName as string,",
+				"          SalesPerson as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     staged: true,",
+				"     allowCopyCommand: true,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          CustomerSK,",
+				"          CustomerID,",
+				"          CompanyName,",
+				"          SalesPerson",
+				"     )) ~> DimCustomer",
+				"ProductSK sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          ProductSK as integer,",
+				"          ProductID as integer,",
+				"          ProductModelID as integer,",
+				"          ProductcategoryID as integer,",
+				"          ProductName as string,",
+				"          ProductModelName as string,",
+				"          ProductCategoryName as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     staged: true,",
+				"     allowCopyCommand: true,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          ProductSK,",
+				"          ProductID,",
+				"          ProductModelID,",
+				"          ProductcategoryID = ProductCategoryID,",
+				"          ProductName,",
+				"          ProductModelName,",
+				"          ProductCategoryName",
+				"     )) ~> DimProduct",
+				"GetMaxCustomer sink(validateSchema: false,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     store: 'cache',",
+				"     format: 'inline',",
+				"     output: false,",
+				"     saveOrder: 1) ~> CustomerSKSink"
+			]
+		}
+	}
+}

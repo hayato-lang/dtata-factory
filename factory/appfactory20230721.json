@@ -1,0 +1,9 @@
+{
+	"name": "appfactory20230721",
+	"location": "japaneast",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "ba9ba75f-2a1e-4218-a33a-a72f5259af9f",
+		"tenantId": "a4df95ce-ac79-41f6-99a6-9c84672c1c03"
+	}
+}
